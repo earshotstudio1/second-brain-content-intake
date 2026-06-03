@@ -5,9 +5,9 @@ vault directories if they don't already exist.
 """
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import yaml
 from dotenv import load_dotenv
@@ -146,7 +146,13 @@ def load_capture_config() -> CaptureConfig:
     chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
     if not chat_id_str:
         raise EnvironmentError("TELEGRAM_CHAT_ID is not set. Add it to your .env file.")
-    telegram_chat_id = int(chat_id_str)
+    try:
+        telegram_chat_id = int(chat_id_str)
+    except ValueError:
+        raise EnvironmentError(
+            f"TELEGRAM_CHAT_ID must be an integer, got {chat_id_str!r}. "
+            "Use the numeric chat ID, not a username."
+        )
 
     raw_folders = raw.get("capture_folders", {})
     capture_folders: Dict[str, Path] = {}
