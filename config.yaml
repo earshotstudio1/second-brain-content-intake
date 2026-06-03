@@ -1,5 +1,4 @@
 # Second Brain — Configuration
-# ─────────────────────────────────────────────────────────────────────────────
 
 vault_path: "C:/Users/user/vault"
 
@@ -19,28 +18,23 @@ supported_extensions:
   - ".vtt"
   - ".srt"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# Telegram capture pipeline
+telegram:
+  offset_file: ".second-brain/telegram_offset.json"
+
+# Vault folders for captured content (auto-created on first run)
+capture_folders:
+  captures: "Captures"
+  ideas: "Ideas"
+  knowledge: "Knowledge"
+  inbox: "Inbox"
+
 # Model configuration
-# Each key is a workflow. Set the provider and model for each one independently.
-#
-# Supported providers:  anthropic, openai
-#
-# Anthropic models:
-#   claude-haiku-4-5-20251001   — fast, cheapest Anthropic option
-#   claude-sonnet-4-6           — best balance
-#   claude-opus-4-6             — highest quality
-#
-# OpenAI models:
-#   gpt-4o-mini                 — cheap, good for bulk transcript processing
-#   gpt-4o                      — higher quality, more expensive
-#   o3-mini                     — reasoning model, overkill for transcripts
-# ─────────────────────────────────────────────────────────────────────────────
 models:
   transcript_processing:
     provider: openai
     model: gpt-4o-mini
 
-  # Uncomment and configure when you add insight generation later:
-  # insight_generation:
-  #   provider: anthropic
-  #   model: claude-sonnet-4-6
+  capture_processing:
+    provider: google
+    model: gemini-2.0-flash
