@@ -5,9 +5,9 @@ vault directories if they don't already exist.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import yaml
 from dotenv import load_dotenv
@@ -17,10 +17,10 @@ load_dotenv()
 _CONFIG_FILE = Path(__file__).parent.parent / "config.yaml"
 
 # Maps provider name → expected environment variable name.
-# Add new providers here when extending src/llm.py.
 _PROVIDER_ENV: Dict[str, str] = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
+    "google": "GOOGLE_API_KEY",
 }
 
 
@@ -33,13 +33,23 @@ class ModelConfig:
 
 
 @dataclass
+class CaptureConfig:
+    """Settings for the Telegram capture pipeline."""
+    telegram_token: str
+    telegram_chat_id: int
+    offset_file: Path
+    capture_folders: Dict[str, Path]  # category -> absolute vault path
+    capture_model: ModelConfig
+
+
+@dataclass
 class Config:
     vault_path: Path
     input_dir: Path
     output_dir: Path
     tracking_file: Path
     supported_extensions: List[str]
-    models: Dict[str, ModelConfig]  # workflow name → model config
+    models: Dict[str, ModelConfig]
 
 
 def _load_model_config(workflow: str, raw_models: dict) -> ModelConfig:
@@ -110,4 +120,48 @@ def load_config() -> Config:
         tracking_file=tracking_file,
         supported_extensions=raw.get("supported_extensions", [".txt"]),
         models=models,
+    )
+
+
+def load_capture_config() -> CaptureConfig:
+    """Load Telegram capture pipeline config. Call only from capture.py."""
+    if not _CONFIG_FILE.exists():
+        raise FileNotFoundError(f"config.yaml not found at {_CONFIG_FILE}")
+
+    with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    vault_path = Path(raw["vault_path"])
+    if not vault_path.exists():
+        raise FileNotFoundError(f"Vault path does not exist: {vault_path}")
+
+    tg = raw.get("telegram", {})
+    offset_file = vault_path / tg.get("offset_file", ".second-brain/telegram_offset.json")
+    offset_file.parent.mkdir(parents=True, exist_ok=True)
+
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    if not telegram_token:
+        raise EnvironmentError("TELEGRAM_BOT_TOKEN is not set. Add it to your .env file.")
+
+    chat_id_str = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not chat_id_str:
+        raise EnvironmentError("TELEGRAM_CHAT_ID is not set. Add it to your .env file.")
+    telegram_chat_id = int(chat_id_str)
+
+    raw_folders = raw.get("capture_folders", {})
+    capture_folders: Dict[str, Path] = {}
+    for category, folder_name in raw_folders.items():
+        folder_path = vault_path / folder_name
+        folder_path.mkdir(parents=True, exist_ok=True)
+        capture_folders[category] = folder_path
+
+    raw_models = raw.get("models", {})
+    capture_model = _load_model_config("capture_processing", raw_models)
+
+    return CaptureConfig(
+        telegram_token=telegram_token,
+        telegram_chat_id=telegram_chat_id,
+        offset_file=offset_file,
+        capture_folders=capture_folders,
+        capture_model=capture_model,
     )
