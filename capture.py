@@ -62,7 +62,7 @@ def _build_failure_reply(failure_reason: str, guidance: str | None) -> str:
     if guidance:
         lines.append(f"Next step: {guidance}")
     else:
-        lines.append("Note saved with URL only — nothing was lost.")
+        lines.append("Nothing was captured — no fallback was available.")
     return "\n".join(lines)
 
 
@@ -148,7 +148,8 @@ def _process_voice_message(
         transcript = transcribe_voice(ogg_path, openai_api_key)
 
         if verbose:
-            print(f"    Transcript: {transcript[:80]}...")
+            suffix = "..." if len(transcript) > 80 else ""
+            print(f"    Transcript: {transcript[:80]}{suffix}")
 
         capture = classify(
             content=transcript,
@@ -237,8 +238,9 @@ def main() -> None:
 
     if not args.dry_run:
         save_offset(config.offset_file, new_offset)
-
-    print(f"Done. Offset saved: {new_offset}")
+        print(f"Done. Offset saved: {new_offset}")
+    else:
+        print(f"Done. (dry run — offset not saved, would have been: {new_offset})")
 
 
 if __name__ == "__main__":
