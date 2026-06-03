@@ -1,4 +1,3 @@
-import json
 import pytest
 from pathlib import Path
 from src.telegram import load_offset, save_offset, parse_messages, TelegramMessage

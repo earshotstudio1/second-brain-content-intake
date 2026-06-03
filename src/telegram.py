@@ -62,11 +62,15 @@ def get_updates(token: str, offset: int) -> list[dict]:
 def send_reply(token: str, chat_id: int, text: str) -> None:
     """Send a text reply to the user."""
     url = _API_BASE.format(token=token, method="sendMessage")
-    httpx.post(
+    response = httpx.post(
         url,
         json={"chat_id": chat_id, "text": text},
         timeout=_TIMEOUT,
-    ).raise_for_status()
+    )
+    response.raise_for_status()
+    data = response.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"Telegram sendMessage error: {data}")
 
 
 def get_file_url(token: str, file_id: str) -> str:
@@ -75,6 +79,8 @@ def get_file_url(token: str, file_id: str) -> str:
     response = httpx.get(url, params={"file_id": file_id}, timeout=_TIMEOUT)
     response.raise_for_status()
     data = response.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"Telegram getFile error: {data}")
     file_path = data["result"]["file_path"]
     return f"https://api.telegram.org/file/bot{token}/{file_path}"
 
