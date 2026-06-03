@@ -251,14 +251,124 @@ Use `--force` to re-process files regardless.
 
 ---
 
-## V2 ideas (not yet implemented)
+## Telegram Capture Pipeline
+
+Captures content you send from your phone (links, brain dumps, voice notes) and files them into your vault automatically.
+
+### One-time setup
+
+#### 1. Create a Telegram bot
+
+1. Open Telegram → search **@BotFather** → send `/newbot`
+2. Follow the prompts and copy your bot token
+3. Add to `.env`: `TELEGRAM_BOT_TOKEN=<your-token>`
+
+#### 2. Get your personal chat ID
+
+1. Send any message to your new bot in Telegram
+2. Visit in a browser: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
+3. Find `"chat": {"id": <NUMBER>}` — that number is your chat ID
+4. Add to `.env`: `TELEGRAM_CHAT_ID=<number>`
+
+#### 3. Get a Google AI Studio key (free)
+
+1. Visit https://aistudio.google.com/apikey → Create API key
+2. Add to `.env`: `GOOGLE_API_KEY=<key>`
+
+#### 4. Install ffmpeg (required for voice notes)
+
+Download from https://ffmpeg.org/download.html and ensure `ffmpeg` is on your PATH.
+Test: `ffmpeg -version` should print a version number.
+
+#### 5. Verify setup
+
+```bash
+.venv\Scripts\activate
+python capture.py --dry-run -v
+```
+
+Expected: "No new messages." (nothing sent yet).
+
+#### 6. Set up Task Scheduler (runs every 5 minutes)
+
+1. Open **Task Scheduler** (search Start menu)
+2. Click **Create Basic Task** → Name: `Second Brain Capture`
+3. Trigger: **Daily** → finish wizard → then right-click task → Properties
+4. **Triggers** tab → Edit → check **Repeat task every: 5 minutes** for **Indefinitely** → OK
+5. **Actions** tab → Edit:
+   - Program: `C:\Users\user\OneDrive\Desktop\projects\second-brain v1\.venv\Scripts\python.exe`
+   - Arguments: `capture.py`
+   - Start in: `C:\Users\user\OneDrive\Desktop\projects\second-brain v1`
+6. **Conditions** tab → optionally check "Start only if on AC power"
+
+### Running manually
+
+```bash
+.venv\Scripts\activate
+
+# Process new messages now
+python capture.py
+
+# Preview without writing to vault or sending replies
+python capture.py --dry-run
+
+# Verbose output
+python capture.py -v
+```
+
+### What gets captured
+
+| You send | How it's processed | Filed to |
+|---|---|---|
+| Text / brain dump | Gemini Flash classifies | `Inbox/`, `Knowledge/`, `Ideas/`, or `Captures/` |
+| Instagram Reel URL | yt-dlp downloads → Gemini video analysis | `Captures/` |
+| YouTube URL | Free transcript API → Gemini summary | `Captures/` or `Knowledge/` |
+| LinkedIn / other URL | trafilatura scrape → Gemini | `Captures/` |
+| Voice note | Whisper transcribes → Gemini classifies | varies |
+
+### Bot replies
+
+After processing each message you'll receive a Telegram reply within ~5 minutes:
+
+**Success:**
+```
+✓ Filed to Knowledge/
+Title: Jensen Huang on AI Agents
+Tags: #ai #strategy #mindset
+Source: youtube
+```
+
+**Partial (e.g. Instagram caption only):**
+```
+⚠️ Partial capture — filed to Captures/
+Title: ...
+Issue: Video download failed. Caption text only.
+```
+
+**Failure:**
+```
+⚠️ Could not capture this content.
+Reason: Instagram blocked the download.
+Next step: Paste the caption text directly and resend.
+```
+
+### Vault folders created
+
+| Folder | Contents |
+|---|---|
+| `Captures/` | Links and social media content |
+| `Ideas/` | App ideas, product concepts, business opportunities |
+| `Knowledge/` | Mindset, frameworks, tactics, learning |
+| `Inbox/` | Brain dumps and anything unclassifiable |
+
+---
+
+## Future ideas
 
 1. **Daily brief** — aggregates open action items from recent meetings into one note each morning
 2. **Task aggregation** — scrapes all `- [ ]` lines across `Meetings/` into a single pending tasks note
 3. **Weekly review** — digest of all meetings from the past 7 days (good candidate for Claude)
-4. **Inbox processing** — extend the same pipeline to `Inbox/` for voice memos and quick notes
-5. **Note linking** — auto-add `[[wikilinks]]` when two notes mention the same person or project
-6. **Watch mode** — `--watch` flag to poll the input folder instead of Task Scheduler
+4. **Note linking** — auto-add `[[wikilinks]]` when two notes mention the same person or project
 
 ---
 
