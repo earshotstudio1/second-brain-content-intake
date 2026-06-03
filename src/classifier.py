@@ -96,6 +96,11 @@ def _parse_classifier_response(
     # Strip markdown code fences if the model wrapped the JSON
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE).strip()
 
+    # Extract the first JSON object in case the model added preamble/postamble text
+    json_match = re.search(r"\{[\s\S]*\}", cleaned)
+    if json_match:
+        cleaned = json_match.group(0)
+
     try:
         data = json.loads(cleaned)
     except json.JSONDecodeError:
