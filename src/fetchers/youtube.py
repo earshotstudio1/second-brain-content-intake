@@ -39,7 +39,10 @@ def fetch_youtube(url: str) -> FetchResult:
     try:
         api = YouTubeTranscriptApi()
         entries = api.fetch(video_id)
-        text = " ".join(e["text"] for e in entries)
+        text = " ".join(
+            e["text"] if isinstance(e, dict) else e.text
+            for e in entries
+        )
         return FetchResult(
             content=text,
             source_type="youtube",
