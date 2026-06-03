@@ -8,6 +8,7 @@ To add a new provider:
 """
 
 from __future__ import annotations
+import mimetypes
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -61,7 +62,8 @@ def call_llm_with_video(model_config: "ModelConfig", prompt: str, video_path: Pa
 
     _genai.configure(api_key=model_config.api_key)
 
-    video_file = _genai.upload_file(path=str(video_path), mime_type="video/mp4")
+    mime_type, _ = mimetypes.guess_type(str(video_path))
+    video_file = _genai.upload_file(path=str(video_path), mime_type=mime_type or "video/mp4")
 
     # Poll until the file is ready
     while video_file.state.name == "PROCESSING":
@@ -72,10 +74,10 @@ def call_llm_with_video(model_config: "ModelConfig", prompt: str, video_path: Pa
         raise RuntimeError(f"Gemini file processing failed with state: {video_file.state.name}")
 
     model = _genai.GenerativeModel(model_config.model)
-    response = model.generate_content([prompt, video_file])
-
-    # Clean up the uploaded file
-    _genai.delete_file(video_file.name)
+    try:
+        response = model.generate_content([prompt, video_file])
+    finally:
+        _genai.delete_file(video_file.name)
 
     return response.text.strip()
 
