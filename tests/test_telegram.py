@@ -33,6 +33,7 @@ class TestParseMessages:
         ]
         msgs = parse_messages(updates, allowed_chat_id=999)
         assert len(msgs) == 1
+        assert msgs[0].update_id == 1
         assert msgs[0].message_id == 42
         assert msgs[0].text == "hello world"
         assert msgs[0].voice_file_id is None
@@ -50,6 +51,7 @@ class TestParseMessages:
         ]
         msgs = parse_messages(updates, allowed_chat_id=999)
         assert len(msgs) == 1
+        assert msgs[0].update_id == 2
         assert msgs[0].voice_file_id == "file_abc123"
         assert msgs[0].text is None
 

@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from .config import Config
+from .metadata import infer_metadata, parse_frontmatter, render_frontmatter
 
 
 def _extract_title(note_content: str, fallback: str) -> str:
@@ -45,5 +46,14 @@ def write_note(note_content: str, source_file: Path, config: Config) -> Path:
             output_path = config.output_dir / f"{today}-{safe}-{counter}.md"
             counter += 1
 
-    output_path.write_text(note_content, encoding="utf-8")
+    parsed = parse_frontmatter(note_content)
+    relative_path = output_path.relative_to(config.vault_path).as_posix()
+    metadata, _ = infer_metadata(
+        parsed.metadata,
+        relative_path,
+        parsed.body,
+        now=date.today(),
+        model_by_workflow={"transcript_processing": config.models["transcript_processing"].model},
+    )
+    output_path.write_text(render_frontmatter(metadata, parsed.body), encoding="utf-8")
     return output_path

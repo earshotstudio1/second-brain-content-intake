@@ -60,10 +60,25 @@ def call_llm_with_video(model_config: "ModelConfig", prompt: str, video_path: Pa
     if _genai is None:
         raise ImportError("The 'google-generativeai' package is not installed. Run: pip install google-generativeai")
 
-    _genai.configure(api_key=model_config.api_key)
-
     mime_type, _ = mimetypes.guess_type(str(video_path))
-    video_file = _genai.upload_file(path=str(video_path), mime_type=mime_type or "video/mp4")
+    resolved_mime_type = mime_type or "video/mp4"
+
+    _genai.configure(api_key=model_config.api_key)
+    model = _genai.GenerativeModel(model_config.model)
+
+    # Small Telegram/Instagram clips can be sent inline, which avoids the
+    # Gemini Files API path that is stricter about some API key types.
+    if video_path.stat().st_size <= 20 * 1024 * 1024:
+        response = model.generate_content([
+            prompt,
+            {
+                "mime_type": resolved_mime_type,
+                "data": video_path.read_bytes(),
+            },
+        ])
+        return response.text.strip()
+
+    video_file = _genai.upload_file(path=str(video_path), mime_type=resolved_mime_type)
 
     # Poll until the file is ready
     while video_file.state.name == "PROCESSING":
@@ -73,7 +88,6 @@ def call_llm_with_video(model_config: "ModelConfig", prompt: str, video_path: Pa
     if video_file.state.name != "ACTIVE":
         raise RuntimeError(f"Gemini file processing failed with state: {video_file.state.name}")
 
-    model = _genai.GenerativeModel(model_config.model)
     try:
         response = model.generate_content([prompt, video_file])
     finally:

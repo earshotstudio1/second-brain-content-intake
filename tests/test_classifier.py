@@ -6,7 +6,8 @@ class TestParseClassifierResponse:
     def test_parses_valid_json(self):
         raw = '''{
             "title": "Jensen Huang on AI Agents",
-            "category": "knowledge",
+            "category": "knowledge_framework",
+            "area": "agent",
             "tags": ["ai", "strategy"],
             "summary": "Jensen talks about agentic AI.",
             "takeaways": ["Agents will replace SaaS", "Data is the moat"],
@@ -14,7 +15,8 @@ class TestParseClassifierResponse:
         }'''
         result = _parse_classifier_response(raw, source_type="youtube", url="https://youtu.be/abc")
         assert result.title == "Jensen Huang on AI Agents"
-        assert result.category == "knowledge"
+        assert result.category == "knowledge_framework"
+        assert result.area == "agent"
         assert result.tags == ["ai", "strategy"]
         assert result.summary == "Jensen talks about agentic AI."
         assert result.takeaways == ["Agents will replace SaaS", "Data is the moat"]
@@ -36,3 +38,9 @@ class TestParseClassifierResponse:
         result = _parse_classifier_response("not json at all", source_type="text", url=None)
         assert result.category == "inbox"
         assert result.title == "Uncategorised capture"
+
+    def test_infers_area_for_personal_practice(self):
+        raw = '{"title": "Football Warmups", "category": "personal_practice", "tags": ["football"], "summary": "Warm-up drills before matches.", "takeaways": [], "how_to_use": ""}'
+        result = _parse_classifier_response(raw, source_type="voice", url=None)
+        assert result.category == "personal_practice"
+        assert result.area == "football"

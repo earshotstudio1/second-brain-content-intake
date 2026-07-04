@@ -10,6 +10,7 @@ Strategy:
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -38,7 +39,8 @@ def _download_with_ytdlp(url: str, output_path: str) -> bool:
     try:
         result = subprocess.run(
             [
-                "yt-dlp",
+                sys.executable,
+                "-m", "yt_dlp",
                 "-f", "mp4/best[ext=mp4]/best",  # prefer mp4
                 "-o", output_path,
                 "--quiet",

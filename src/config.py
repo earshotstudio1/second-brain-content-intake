@@ -52,6 +52,30 @@ class Config:
     models: Dict[str, ModelConfig]
 
 
+@dataclass
+class WorkflowConfig:
+    """Settings for a scheduled workflow."""
+    vault_path: Path
+    model: ModelConfig
+
+
+@dataclass
+class BasicConfig:
+    """Settings that do not require loading a model API key."""
+    vault_path: Path
+
+
+@dataclass
+class MaintenanceConfig:
+    """Settings for vault maintenance."""
+    vault_path: Path
+    scan_folders: List[str]
+    report_folder: str
+    change_log_folder: str
+    run_log: str
+    backup_root: str
+
+
 def _load_model_config(workflow: str, raw_models: dict) -> ModelConfig:
     """Parse and validate one workflow entry from the models: section."""
     entry = raw_models.get(workflow)
@@ -170,4 +194,70 @@ def load_capture_config() -> CaptureConfig:
         offset_file=offset_file,
         capture_folders=capture_folders,
         capture_model=capture_model,
+    )
+
+
+def load_workflow_config(workflow: str) -> WorkflowConfig:
+    """Load config for a standalone workflow such as weekly_review."""
+    if not _CONFIG_FILE.exists():
+        raise FileNotFoundError(f"config.yaml not found at {_CONFIG_FILE}")
+
+    with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    vault_path = Path(raw["vault_path"])
+    if not vault_path.exists():
+        raise FileNotFoundError(f"Vault path does not exist: {vault_path}")
+
+    model = _load_model_config(workflow, raw.get("models", {}))
+    return WorkflowConfig(vault_path=vault_path, model=model)
+
+
+def load_basic_config() -> BasicConfig:
+    """Load vault path only, without requiring model API keys."""
+    if not _CONFIG_FILE.exists():
+        raise FileNotFoundError(f"config.yaml not found at {_CONFIG_FILE}")
+
+    with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    vault_path = Path(raw["vault_path"])
+    if not vault_path.exists():
+        raise FileNotFoundError(f"Vault path does not exist: {vault_path}")
+    return BasicConfig(vault_path=vault_path)
+
+
+def load_maintenance_config() -> MaintenanceConfig:
+    """Load maintenance settings without requiring model API keys."""
+    if not _CONFIG_FILE.exists():
+        raise FileNotFoundError(f"config.yaml not found at {_CONFIG_FILE}")
+
+    with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+
+    vault_path = Path(raw["vault_path"])
+    if not vault_path.exists():
+        raise FileNotFoundError(f"Vault path does not exist: {vault_path}")
+
+    maintenance = raw.get("maintenance", {})
+    return MaintenanceConfig(
+        vault_path=vault_path,
+        scan_folders=maintenance.get("scan_folders", [
+            "Captures",
+            "Ideas",
+            "Personal",
+            "Projects",
+            "Knowledge",
+            "Perspective",
+            "Inbox",
+            "Meetings",
+            "Reviews",
+            "Growth",
+            "Maintenance",
+            "Profile",
+        ]),
+        report_folder=maintenance.get("report_folder", "Maintenance/Reports"),
+        change_log_folder=maintenance.get("change_log_folder", "Maintenance/Change Log"),
+        run_log=maintenance.get("run_log", ".second-brain/maintenance_runs.jsonl"),
+        backup_root=maintenance.get("backup_root", ".second-brain/backups"),
     )

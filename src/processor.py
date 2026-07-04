@@ -42,6 +42,15 @@ Return the note using EXACTLY this structure. Do not add, remove, or rename sect
 title: "{{inferred meeting or session title}}"
 date: {{YYYY-MM-DD date of the meeting, or {today} if unknown}}
 type: meeting-note
+domain: meeting
+area: work
+stage: processed
+source: transcript
+workflow: transcript_processing
+related_projects: []
+related_opportunities: []
+participants: []
+schema: meeting-opportunity-v1
 tags: [meeting-notes]
 ---
 
@@ -56,8 +65,23 @@ tags: [meeting-notes]
 ## Decisions Made
 {{One per line. Concrete decisions or agreements reached.}}
 
+## Opportunity Signals
+{{One per line. Problems, needs, gaps, openings, or moments where Daniel may be able to add value.}}
+
+## Work Context
+{{One per line. Background, constraints, project context, or organisational context that may matter later.}}
+
+## Stakeholders / People Mentioned
+{{One per line. People, teams, organisations, roles, or decision-makers mentioned.}}
+
 ## Blockers / Risks
 {{One per line. Anything that could slow progress or needs attention.}}
+
+## Open Loops
+{{One per line. Unresolved issues, unclear ownership, pending decisions, or loose ends.}}
+
+## Possible Project Links
+{{One per line. Existing or potential projects this meeting may connect to.}}
 
 ## Follow-ups / Open Questions
 {{One per line. Things that need answering or chasing.}}

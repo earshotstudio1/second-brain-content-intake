@@ -33,7 +33,7 @@ def _build_success_reply(capture: ClassifiedCapture, note_path: Path) -> str:
     folder_name = note_path.parent.name
     tags = " ".join(f"#{t}" for t in capture.tags) if capture.tags else ""
     lines = [
-        f"✓ Filed to {folder_name}/",
+        f"[OK] Filed to {folder_name}/",
         f"Title: {capture.title}",
     ]
     if tags:
@@ -45,7 +45,7 @@ def _build_success_reply(capture: ClassifiedCapture, note_path: Path) -> str:
 def _build_partial_reply(capture: ClassifiedCapture, note_path: Path, failure_reason: str, guidance: str | None) -> str:
     folder_name = note_path.parent.name
     lines = [
-        f"⚠️ Partial capture — filed to {folder_name}/",
+        f"[PARTIAL] Filed to {folder_name}/",
         f"Title: {capture.title}",
         f"Issue: {failure_reason}",
     ]
@@ -56,13 +56,13 @@ def _build_partial_reply(capture: ClassifiedCapture, note_path: Path, failure_re
 
 def _build_failure_reply(failure_reason: str, guidance: str | None) -> str:
     lines = [
-        f"⚠️ Could not capture this content.",
+        f"[ERROR] Could not capture this content.",
         f"Reason: {failure_reason}",
     ]
     if guidance:
         lines.append(f"Next step: {guidance}")
     else:
-        lines.append("Nothing was captured — no fallback was available.")
+        lines.append("Nothing was captured - no fallback was available.")
     return "\n".join(lines)
 
 
@@ -110,9 +110,9 @@ def _process_text_message(
     )
 
     if dry_run:
-        return f"[DRY RUN] Would file to {capture.category}/ — {capture.title}"
+        return f"[DRY RUN] Would file to {capture.category}/ - {capture.title}"
 
-    note_path = write_capture_note(capture, config.capture_folders)
+    note_path = write_capture_note(capture, config.capture_folders, model=config.capture_model.model)
 
     if fetch_result.partial:
         return _build_partial_reply(
@@ -136,7 +136,7 @@ def _process_voice_message(
 
     openai_api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not openai_api_key:
-        return "⚠️ Voice notes require OPENAI_API_KEY to be set in .env. Note not captured."
+        return "[ERROR] Voice notes require OPENAI_API_KEY to be set in .env. Note not captured."
 
     ogg_path = None
     try:
@@ -160,9 +160,9 @@ def _process_voice_message(
         )
 
         if dry_run:
-            return f"[DRY RUN] Would file voice note to {capture.category}/ — {capture.title}"
+            return f"[DRY RUN] Would file voice note to {capture.category}/ - {capture.title}"
 
-        note_path = write_capture_note(capture, config.capture_folders)
+        note_path = write_capture_note(capture, config.capture_folders, model=config.capture_model.model)
         return _build_success_reply(capture, note_path)
 
     except Exception as e:
@@ -174,7 +174,7 @@ def _process_voice_message(
             ogg_path.rename(dest)
 
         return "\n".join([
-            "⚠️ Could not process voice note.",
+            "[ERROR] Could not process voice note.",
             f"Reason: {e}",
             FAILURE_GUIDANCE["voice"],
         ])
@@ -206,7 +206,16 @@ def main() -> None:
     print(f"Processing {len(updates)} update(s)...")
 
     messages = parse_messages(updates, allowed_chat_id=config.telegram_chat_id)
-    new_offset = max(u["update_id"] for u in updates)
+    ignored_update_ids = {
+        update["update_id"]
+        for update in updates
+        if not parse_messages([update], allowed_chat_id=config.telegram_chat_id)
+    }
+    last_successful_offset = offset
+    for update in updates:
+        update_id = update["update_id"]
+        if update_id in ignored_update_ids and update_id == last_successful_offset + 1:
+            last_successful_offset = update_id
 
     for msg in messages:
         msg_type = "voice" if msg.voice_file_id else "text"
@@ -224,6 +233,7 @@ def main() -> None:
 
             if not args.dry_run:
                 send_reply(config.telegram_token, msg.chat_id, reply)
+                last_successful_offset = msg.update_id
 
         except Exception as e:
             print(f"ERROR: {e}")
@@ -231,16 +241,18 @@ def main() -> None:
                 try:
                     send_reply(
                         config.telegram_token, msg.chat_id,
-                        f"⚠️ Unexpected error processing your message: {e}\nPlease try again."
+                        f"[ERROR] Unexpected error processing your message: {e}\nPlease try again."
                     )
                 except Exception:
                     pass  # Don't let a reply failure crash the run
+            break
 
     if not args.dry_run:
-        save_offset(config.offset_file, new_offset)
-        print(f"Done. Offset saved: {new_offset}")
+        if last_successful_offset > offset:
+            save_offset(config.offset_file, last_successful_offset)
+        print(f"Done. Offset saved: {last_successful_offset}")
     else:
-        print(f"Done. (dry run — offset not saved, would have been: {new_offset})")
+        print("Done. (dry run - offset not saved)")
 
 
 if __name__ == "__main__":

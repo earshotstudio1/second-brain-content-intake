@@ -17,13 +17,23 @@ class TestBuildNoteContent:
             source_type="youtube",
             url="https://youtube.com/watch?v=abc",
             raw_content="raw transcript text here",
+            area="",
         )
         defaults.update(overrides)
         return ClassifiedCapture(**defaults)
 
     def test_contains_title_in_frontmatter(self):
         content = _build_note_content(self._make_capture(), today="2026-06-01")
-        assert 'title: "Test Title"' in content
+        assert "title: Test Title" in content
+
+    def test_contains_standard_metadata(self):
+        content = _build_note_content(self._make_capture(), today="2026-06-01", model="gemini-test")
+        assert "status: active" in content
+        assert "domain: knowledge" in content
+        assert "stage: active" in content
+        assert "workflow: capture_telegram" in content
+        assert "model: gemini-test" in content
+        assert "source_url: https://youtube.com/watch?v=abc" in content
 
     def test_contains_tags(self):
         content = _build_note_content(self._make_capture(), today="2026-06-01")
@@ -62,6 +72,7 @@ class TestWriteCaptureNote:
             source_type="text",
             url=None,
             raw_content="raw text",
+            area="",
         )
 
     def test_writes_to_correct_folder(self, tmp_path):
@@ -90,3 +101,40 @@ class TestWriteCaptureNote:
         folders["inbox"].mkdir()
         path = write_capture_note(self._make_capture(category="unknown"), folders)
         assert path.parent == folders["inbox"]
+
+    def test_personal_practice_writes_to_area_folder(self, tmp_path):
+        folders = {
+            "personal_practice": tmp_path / "Personal" / "Practice",
+            "inbox": tmp_path / "Inbox",
+        }
+        for f in folders.values():
+            f.mkdir(parents=True)
+
+        capture = self._make_capture(category="personal_practice")
+        capture.area = "football"
+        path = write_capture_note(capture, folders)
+
+        assert path.parent == folders["personal_practice"] / "Football"
+        content = path.read_text(encoding="utf-8")
+        assert "type: practice-note" in content
+        assert "domain: personal-practice" in content
+        assert "area: football" in content
+        assert "stage: to-try" in content
+
+    def test_project_idea_writes_to_projects_ideas(self, tmp_path):
+        folders = {
+            "project_idea": tmp_path / "Projects" / "Ideas",
+            "inbox": tmp_path / "Inbox",
+        }
+        for f in folders.values():
+            f.mkdir(parents=True)
+
+        capture = self._make_capture(category="project_idea")
+        capture.area = "app"
+        path = write_capture_note(capture, folders)
+
+        assert path.parent == folders["project_idea"]
+        content = path.read_text(encoding="utf-8")
+        assert "type: project-idea" in content
+        assert "domain: project" in content
+        assert "decision: undecided" in content

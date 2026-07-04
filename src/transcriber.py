@@ -8,6 +8,7 @@ Requires ffmpeg installed and available on PATH.
 
 from __future__ import annotations
 
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -30,12 +31,23 @@ def download_voice(file_url: str) -> Path:
 
 
 def _convert_ogg_to_mp3(ogg_path: Path) -> Path:
-    """Convert .ogg to .mp3 using pydub. Returns path to the .mp3 file."""
-    from pydub import AudioSegment
-
+    """Convert .ogg to .mp3 using ffmpeg. Returns path to the .mp3 file."""
     mp3_path = ogg_path.with_suffix(".mp3")
-    audio = AudioSegment.from_ogg(str(ogg_path))
-    audio.export(str(mp3_path), format="mp3")
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i", str(ogg_path),
+            "-vn",
+            "-codec:a", "libmp3lame",
+            str(mp3_path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0 or not mp3_path.exists():
+        raise RuntimeError(f"ffmpeg failed to convert voice note: {result.stderr.strip()}")
     return mp3_path
 
 

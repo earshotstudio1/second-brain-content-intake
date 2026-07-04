@@ -14,7 +14,19 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from src.config import ModelConfig
 
-_VALID_CATEGORIES = {"captures", "ideas", "knowledge", "inbox"}
+_VALID_CATEGORIES = {
+    "captures",
+    "ideas",
+    "knowledge",
+    "inbox",
+    "personal_practice",
+    "project_idea",
+    "knowledge_framework",
+    "knowledge_best_practice",
+    "knowledge_reference",
+    "knowledge_tool",
+    "perspective",
+}
 
 _SYSTEM_PROMPT = """\
 You are a second-brain assistant that classifies and structures captured content.
@@ -35,11 +47,16 @@ CONTENT:
 
 Return a single JSON object with exactly these keys:
 - "title": short descriptive title (max 10 words)
-- "category": one of "captures" | "ideas" | "knowledge" | "inbox"
-  - captures: links, social media content, external resources
-  - ideas: app ideas, product concepts, business opportunities
-  - knowledge: mindset, frameworks, tactics, learning, strategies
-  - inbox: personal brain dumps, mixed content, anything ambiguous
+- "category": one of "personal_practice" | "project_idea" | "knowledge_framework" | "knowledge_best_practice" | "knowledge_reference" | "knowledge_tool" | "perspective" | "inbox"
+  - personal_practice: drills, exercises, techniques, workouts, or habits the user wants to try personally
+  - project_idea: app ideas, agent ideas, workflow ideas, product concepts, or business opportunities
+  - knowledge_framework: reusable models, mental models, strategy frameworks, or operating systems
+  - knowledge_best_practice: tactics, playbooks, methods, or practical advice worth applying
+  - knowledge_reference: external resources, links, facts, examples, or material to keep for reference
+  - knowledge_tool: tools, software, services, libraries, or products to evaluate
+  - perspective: reflections, mindset, emotional concepts, values, relationships, or life lessons
+  - inbox: mixed content, unclear intent, or anything ambiguous
+- "area": short lowercase area when clear; examples: football, guitar, fitness, communication, mindset, app, agent, workflow, work, emotional-concepts, life-lessons, relationships, values. Use "" if unclear.
 - "tags": list of 2-5 lowercase single-word tags
 - "summary": 2-3 sentence explanation of the core idea
 - "takeaways": list of 2-5 concrete bullet points
@@ -52,7 +69,7 @@ Return ONLY the JSON object.\
 @dataclass
 class ClassifiedCapture:
     title: str
-    category: str                     # "captures" | "ideas" | "knowledge" | "inbox"
+    category: str
     tags: list[str]
     summary: str
     takeaways: list[str]
@@ -60,6 +77,7 @@ class ClassifiedCapture:
     source_type: str                  # "instagram" | "youtube" | "linkedin" | "text" | "voice" | "generic"
     url: Optional[str]
     raw_content: str
+    area: str = ""
 
 
 def classify(
@@ -110,17 +128,52 @@ def _parse_classifier_response(
     if category not in _VALID_CATEGORIES:
         category = "inbox"
 
+    title = str(data.get("title", "Untitled capture")).strip()
+    summary = str(data.get("summary", "")).strip()
+    raw_tags = data.get("tags", [])
+    tags = [str(t).lower() for t in raw_tags]
+    area = str(data.get("area") or "").strip().lower()
+    if not area:
+        area = infer_area(" ".join([title, summary, raw_content, " ".join(tags)]), category)
+
     return ClassifiedCapture(
-        title=str(data.get("title", "Untitled capture")).strip(),
+        title=title,
         category=category,
-        tags=[str(t).lower() for t in data.get("tags", [])],
-        summary=str(data.get("summary", "")).strip(),
+        area=area,
+        tags=tags,
+        summary=summary,
         takeaways=[str(t) for t in data.get("takeaways", [])],
         how_to_use=str(data.get("how_to_use", "")).strip(),
         source_type=source_type,
         url=url,
         raw_content=raw_content,
     )
+
+
+def infer_area(text: str, category: str) -> str:
+    """Infer a lightweight domain area from obvious content signals."""
+    haystack = text.lower()
+    keyword_areas = [
+        ("football", ["football", "drill", "match", "warm-up", "warmup"]),
+        ("guitar", ["guitar", "chord", "strumming", "riff"]),
+        ("fitness", ["workout", "fitness", "gym", "run", "strength", "mobility"]),
+        ("communication", ["speaking", "presence", "presentation", "conversation", "communicate"]),
+        ("app", ["app", "application", "mobile"]),
+        ("agent", ["agent", "ai agent", "orchestrator"]),
+        ("workflow", ["workflow", "automation", "process", "pipeline"]),
+        ("work", ["client", "business", "meeting", "team", "stakeholder"]),
+        ("emotional-concepts", ["emotion", "feeling", "anxiety", "confidence"]),
+        ("life-lessons", ["lesson", "life", "experience"]),
+        ("relationships", ["relationship", "friend", "family", "partner"]),
+        ("values", ["value", "principle", "standard"]),
+        ("mindset", ["mindset", "belief", "perspective", "identity"]),
+    ]
+    for area, keywords in keyword_areas:
+        if any(keyword in haystack for keyword in keywords):
+            return area
+    if category == "perspective":
+        return "mindset"
+    return ""
 
 
 def _fallback_capture(source_type: str, url: Optional[str], raw_content: str) -> ClassifiedCapture:
@@ -134,4 +187,5 @@ def _fallback_capture(source_type: str, url: Optional[str], raw_content: str) ->
         source_type=source_type,
         url=url,
         raw_content=raw_content,
+        area="",
     )

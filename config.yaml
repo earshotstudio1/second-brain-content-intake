@@ -24,10 +24,38 @@ telegram:
 
 # Vault folders for captured content (auto-created on first run)
 capture_folders:
+  personal_practice: "Personal/Practice"
+  project_idea: "Projects/Ideas"
+  knowledge_framework: "Knowledge/Frameworks"
+  knowledge_best_practice: "Knowledge/Best Practices"
+  knowledge_reference: "Knowledge/References"
+  knowledge_tool: "Knowledge/Tools"
+  perspective: "Perspective"
+  # Legacy keys kept for compatibility with older classifier outputs.
   captures: "Captures"
   ideas: "Ideas"
   knowledge: "Knowledge"
   inbox: "Inbox"
+
+# Vault maintenance workflow
+maintenance:
+  scan_folders:
+    - "Captures"
+    - "Ideas"
+    - "Personal"
+    - "Projects"
+    - "Knowledge"
+    - "Perspective"
+    - "Inbox"
+    - "Meetings"
+    - "Reviews"
+    - "Growth"
+    - "Maintenance"
+    - "Profile"
+  report_folder: "Maintenance/Reports"
+  change_log_folder: "Maintenance/Change Log"
+  run_log: ".second-brain/maintenance_runs.jsonl"
+  backup_root: ".second-brain/backups"
 
 # Model configuration
 models:
@@ -37,4 +65,12 @@ models:
 
   capture_processing:
     provider: google
-    model: gemini-2.0-flash
+    model: gemini-2.5-flash-lite
+
+  weekly_review:
+    provider: google
+    model: gemini-2.5-flash-lite
+
+  growth_coach:
+    provider: google
+    model: gemini-2.5-flash-lite

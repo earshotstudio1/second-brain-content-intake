@@ -19,6 +19,7 @@ _TIMEOUT = 30
 
 @dataclass
 class TelegramMessage:
+    update_id: int
     message_id: int
     chat_id: int
     text: Optional[str]           # full raw message text (may include a URL)
@@ -103,6 +104,7 @@ def parse_messages(updates: list[dict], allowed_chat_id: int) -> list[TelegramMe
         voice = msg.get("voice")
         messages.append(
             TelegramMessage(
+                update_id=update["update_id"],
                 message_id=msg["message_id"],
                 chat_id=chat_id,
                 text=msg.get("text"),
