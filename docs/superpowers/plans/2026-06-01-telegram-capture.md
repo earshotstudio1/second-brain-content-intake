@@ -560,9 +560,9 @@ class TestExtractUrl:
 
 class TestExtractContext:
     def test_removes_url_and_strips(self):
-        text = "Use this framing https://instagram.com/reel/abc for client"
+        text = "Use this framing https://instagram.com/reel/abc for the client deck"
         url = "https://instagram.com/reel/abc"
-        assert extract_context(text, url) == "Use this framing  for client".strip()
+        assert extract_context(text, url) == "Use this framing  for the client deck".strip()
 
     def test_returns_empty_string_when_only_url(self):
         url = "https://instagram.com/reel/abc"
