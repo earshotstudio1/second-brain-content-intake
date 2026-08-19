@@ -1,6 +1,9 @@
 # Second Brain — Configuration
+#
+# Copy this file to config.yaml and point vault_path at your own vault.
+# config.yaml is gitignored, so your real settings stay local.
 
-vault_path: "C:/Users/user/vault"
+vault_path: "C:/path/to/your/vault"
 
 # Where you drop raw transcript files
 input_folder: "Transcripts"
@@ -15,8 +18,6 @@ tracking_file: ".second-brain/processed.jsonl"
 supported_extensions:
   - ".txt"
   - ".md"
-  - ".vtt"
-  - ".srt"
 
 # Telegram capture pipeline
 telegram:
