@@ -57,3 +57,24 @@ class TestDetectPlatform:
 
     def test_none_returns_generic(self):
         assert detect_platform(None) == "generic"
+
+    def test_lookalike_domain_is_not_instagram(self):
+        assert detect_platform("https://instagram.com.attacker.example/p/x") == "generic"
+
+    def test_platform_name_in_path_is_not_the_platform(self):
+        assert detect_platform("https://evil.example/instagram.com/p/x") == "generic"
+
+    def test_platform_name_in_query_is_not_the_platform(self):
+        assert detect_platform("https://evil.example/?next=https://youtube.com/x") == "generic"
+
+    def test_platform_name_in_userinfo_is_not_the_platform(self):
+        assert detect_platform("https://linkedin.com@evil.example/posts/x") == "generic"
+
+    def test_suffix_lookalike_is_not_youtube(self):
+        assert detect_platform("https://notyoutube.com/watch?v=x") == "generic"
+
+    def test_uppercase_host_still_matches(self):
+        assert detect_platform("https://WWW.Instagram.COM/p/abc") == "instagram"
+
+    def test_malformed_url_returns_generic(self):
+        assert detect_platform("not a url at all") == "generic"

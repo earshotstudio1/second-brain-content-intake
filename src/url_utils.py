@@ -5,6 +5,7 @@ Pure functions — no side effects, no I/O.
 
 from __future__ import annotations
 import re
+from urllib.parse import urlparse
 
 # Matches http(s):// URLs — permissive enough to catch most real-world URLs
 _URL_PATTERN = re.compile(r"https?://[^\s\]>\"']+")
@@ -25,6 +26,25 @@ def extract_context(text: str, url: str | None) -> str:
     return text.replace(url, "").strip()
 
 
+def _hostname(url: str) -> str:
+    """Return the lowercased hostname of a URL, or '' if it has none."""
+    try:
+        return (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def _is_host(host: str, domain: str) -> bool:
+    """True if host is domain itself or a subdomain of it.
+
+    Substring checks are not safe here: "instagram.com" appears in both
+    instagram.com.attacker.example and example.com/?next=instagram.com, and
+    routing either of those to the authenticated Instagram fetcher would send
+    credentials to a host we do not control.
+    """
+    return host == domain or host.endswith("." + domain)
+
+
 def detect_platform(url: str | None) -> str:
     """
     Identify the platform from a URL.
@@ -33,15 +53,17 @@ def detect_platform(url: str | None) -> str:
     if not url:
         return "generic"
 
-    url_lower = url.lower()
+    host = _hostname(url)
+    if not host:
+        return "generic"
 
-    if "instagram.com" in url_lower:
+    if _is_host(host, "instagram.com"):
         return "instagram"
 
-    if "youtube.com" in url_lower or "youtu.be" in url_lower:
+    if _is_host(host, "youtube.com") or _is_host(host, "youtu.be"):
         return "youtube"
 
-    if "linkedin.com" in url_lower:
+    if _is_host(host, "linkedin.com"):
         return "linkedin"
 
     return "generic"
